@@ -1,0 +1,22 @@
+# Using the docker compose file to set up a PostgreSQL database for the application.
+services:
+  postgres:
+    image: postgres:16
+    environment:
+    # Declaring required variables
+      POSTGRES_USER: complianceops
+      POSTGRES_PASSWORD: complianceops
+      POSTGRES_DB: complianceops
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    #Service should continue running unless postgres is not ready
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U complianceops"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  postgres_data:
