@@ -17,4 +17,4 @@ app = FastAPI(title="ComplianceOps Transaction Service", lifespan=lifespan)
 register_exception_handlers(app)
 
 app.include_router(health.router)
-app.include_router(transactions.router)
+app.include_router(transaction.router)
