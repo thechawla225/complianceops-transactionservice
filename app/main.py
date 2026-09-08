@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from app.database import init_models
 from app.exceptions import register_exception_handlers
 from app.models import transaction 
-from app.routers import health, transactions
+from app.routers import health, transaction
 
 
 @asynccontextmanager
