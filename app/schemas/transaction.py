@@ -20,7 +20,7 @@ class InstructedAmount(BaseModel):
     currency: str = Field(min_length=3, max_length=3)
 
 
-class Transaction(BaseModel):
+class TransactionCreate(BaseModel):
     endToEndId: str
     debtor: Debtor
     creditor: Creditor
