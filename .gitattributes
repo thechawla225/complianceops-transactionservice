@@ -1,0 +1,10 @@
+# Store text files with LF in the repo (Linux CI runners and containers expect LF),
+# regardless of the OS that committed them. PowerShell stays CRLF for Windows.
+* text=auto eol=lf
+*.ps1 text eol=crlf
+
+*.png binary
+*.jpg binary
+*.ico binary
+*.gz binary
+*.zip binary
