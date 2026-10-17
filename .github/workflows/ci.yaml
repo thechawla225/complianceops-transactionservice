@@ -1,0 +1,53 @@
+name: CI
+
+# Every push/PR: lint + tests. PRs: image build + Trivy scan.
+# Push to main: build -> Trivy -> push to ECR (tag = commit SHA) -> Cosign sign
+# -> bump gitops/transaction/values-dev.yaml (reusable workflow in the complianceops hub repo).
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:   # manual run; a re-run reuses the old hub workflow, a new run fetches @main again
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"   # same as the Dockerfile base image
+      - run: pip install -r requirements-dev.txt ruff
+      - name: lint (syntax errors + undefined names only)
+        run: ruff check --select E9,F63,F7,F82 .
+      - name: test
+        run: python -m pytest -q
+
+  # PRs only: build locally and run the same Trivy gate as the hub workflow,
+  # so a vulnerable image is caught before merge (no AWS access, nothing pushed)
+  pr-scan:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker build -t pr-image .
+      - name: Trivy scan (fail on fixable CRITICAL)
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:0.76.0 image --no-progress \
+            --severity CRITICAL --ignore-unfixed --exit-code 1 pr-image
+
+  image:
+    needs: test
+    if: github.event_name != 'pull_request'
+    permissions:
+      id-token: write
+      contents: read
+    uses: thechawla225/complianceops/.github/workflows/service-image.yaml@main
+    with:
+      service: transaction
+    secrets:
+      HUB_DEPLOY_KEY: ${{ secrets.HUB_DEPLOY_KEY }}
