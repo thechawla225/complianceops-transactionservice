@@ -1,16 +1,17 @@
 import uuid
- 
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
- 
+
 from app.database import get_db
 from app.models.transaction import Transaction
 from app.schemas.transaction import TransactionCreate, TransactionRead
 from app.services.screening_client import screen
- 
+from app.services.sqs_publisher import publish_flagged
+
 router = APIRouter(prefix="/transactions", tags=["transactions"])
- 
- 
+
+
 @router.post("", status_code=201, response_model=TransactionRead)
 async def create_transaction(
     payload: TransactionCreate, db: AsyncSession = Depends(get_db)
@@ -30,17 +31,20 @@ async def create_transaction(
 
     await db.commit()
     await db.refresh(txn)
- 
+
 
     result = await screen(payload.debtor.name, payload.creditor.name)
     txn.status = result.status
     txn.screening_ref = result.screening_ref
     await db.commit()
     await db.refresh(txn)
- 
+
+    if txn.status == "flagged":
+        await publish_flagged(txn, result.matched_entity)
+
     return TransactionRead.from_model(txn)
- 
- 
+
+
 @router.get("/{transaction_id}", response_model=TransactionRead)
 async def get_transaction(
     transaction_id: uuid.UUID, db: AsyncSession = Depends(get_db)
