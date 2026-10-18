@@ -1,18 +1,19 @@
- 
+
 from dataclasses import dataclass
- 
+
 import httpx
 from fastapi import HTTPException
- 
+
 from app.config import settings
- 
- 
+
+
 @dataclass
 class ScreeningResult:
-    status: str 
+    status: str
     screening_ref: str
- 
- 
+    matched_entity: str | None = None
+
+
 async def screen(debtor_name: str, creditor_name: str) -> ScreeningResult:
     async with httpx.AsyncClient() as client:
         try:
@@ -24,4 +25,8 @@ async def screen(debtor_name: str, creditor_name: str) -> ScreeningResult:
             raise HTTPException(status_code=502, detail="screening service unreachable") from exc
         resp.raise_for_status()
         body = resp.json()
-        return ScreeningResult(status=body["verdict"], screening_ref=body["screeningRef"])
+        return ScreeningResult(
+            status=body["verdict"],
+            screening_ref=body["screeningRef"],
+            matched_entity=body.get("matchedEntity"),
+        )
