@@ -7,6 +7,7 @@ from fastapi import HTTPException
 from starlette.concurrency import run_in_threadpool
 
 from app.config import settings
+from app.metrics import SQS_PUBLISH_FAILURES
 
 log = logging.getLogger(__name__)
 
@@ -39,4 +40,5 @@ async def publish_flagged(txn, matched_entity: str | None) -> None:
     except Exception as exc:
         # The transaction is already saved as flagged; fail loudly so the missing alert isn't silent
         log.exception("failed to publish flagged transaction %s", txn.id)
+        SQS_PUBLISH_FAILURES.inc()
         raise HTTPException(status_code=502, detail="alert queue unavailable") from exc

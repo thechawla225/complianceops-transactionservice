@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.metrics import TRANSACTIONS_SCREENED
 from app.models.transaction import Transaction
 from app.schemas.transaction import TransactionCreate, TransactionRead
 from app.services.screening_client import screen
@@ -36,6 +37,7 @@ async def create_transaction(
     result = await screen(payload.debtor.name, payload.creditor.name)
     txn.status = result.status
     txn.screening_ref = result.screening_ref
+    TRANSACTIONS_SCREENED.labels(result.status).inc()
     await db.commit()
     await db.refresh(txn)
 
